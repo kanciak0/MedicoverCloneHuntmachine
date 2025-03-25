@@ -1,0 +1,11 @@
+3. Blazor Server UI Design
+
+Home Page: Shows an overview of appointments, upcoming visits, and recent medical records.
+
+Patient Management Page: Displays a list of patients with CRUD operations (Create, Read, Update, Delete).
+
+Doctor Management Page: Allows management of doctors' information and specialties.
+
+Appointment Scheduling Page: Allows users to schedule and manage appointments between patients and doctors.
+
+Medical History Page: Displays medical records and allows adding/updating patient histories.
