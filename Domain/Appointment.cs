@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.WebUtilities;
+using System;
 
 namespace MedicoverClone.Domain
 {
@@ -9,6 +10,8 @@ namespace MedicoverClone.Domain
         public AppointmentStatus AppointmentStatus { get; set; } 
         public Patient Patient { get; set; }
         public Doctor Doctor { get; set; }
+        public string Reason { get; set; }
+        public string Notes { get; set; }
     }
     public enum AppointmentStatus
     {

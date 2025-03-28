@@ -1,0 +1,451 @@
+﻿@page "/appointments"
+@using MedicoverClone.Domain
+@using MedicoverClone.Services
+@using MedicoverClone.Services.Interfaces
+@inject IAppointmentService AppointmentService
+@inject IPatientService PatientService
+@inject IDoctorService DoctorService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Appointment Management</PageTitle>
+
+<div class="appointment-container">
+    <div class="header-section">
+        <h1>Appointment Management</h1>
+        <div class="header-actions">
+            <button class="btn btn-primary" @onclick="ShowCreateModal">
+                <i class="fas fa-plus"></i> New Appointment
+            </button>
+            <div class="date-filter">
+                <input type="date" class="form-control" 
+                       @bind="filterDate" 
+                       @bind:format="yyyy-MM-dd" />
+            </div>
+            <div class="search-box">
+                <input type="text" class="form-control" placeholder="Search..." 
+                       @bind="searchTerm" @bind:event="oninput" />
+                <i class="fas fa-search"></i>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading-spinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="appointment-list">
+            @if (filteredAppointments.Count == 0)
+            {
+                <div class="empty-state">
+                    <i class="fas fa-calendar-times fa-3x"></i>
+                    <p>No appointments found</p>
+                    <button class="btn btn-primary" @onclick="ShowCreateModal">
+                        Create New Appointment
+                    </button>
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date/Time</th>
+                                <th>Patient</th>
+                                <th>Doctor</th>
+                                <th>Specialty</th>
+                                <th>Reason</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var appointment in filteredAppointments)
+                            {
+                                <tr>
+                                    <td>@appointment.Date.ToString("g")</td>
+                                    <td>@(appointment.Patient?.FirstName ?? "N/A") @(appointment.Patient?.LastName ?? "")</td>
+                                    <td>Dr. @(appointment.Doctor?.LastName ?? "N/A")</td>
+                                    <td>@(appointment.Doctor?.Specialty ?? "N/A")</td>
+                                    <td>@(appointment.Reason ?? "N/A")</td>
+                                    <td>
+                                        <span class="badge @GetStatusBadgeClass(appointment.AppointmentStatus)">
+                                            @appointment.AppointmentStatus
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary" @onclick="@(() => EditAppointment(appointment.AppointmentId))">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="@(() => DeleteAppointment(appointment.AppointmentId))">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    }
+
+    <!-- Appointment Edit/Create Modal -->
+    @if (showEditModal)
+    {
+        <div class="modal-backdrop show"></div>
+        <div class="modal show d-block" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">@(currentAppointment.AppointmentId == 0 ? "New Appointment" : "Edit Appointment")</h5>
+                        <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <EditForm Model="@currentAppointment" OnValidSubmit="@SaveAppointment">
+                            <DataAnnotationsValidator />
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Patient</label>
+                                    <InputSelect class="form-select" @bind-Value="@selectedPatientId">
+                                        <option value="">Select Patient</option>
+                                        @foreach (var patient in patients)
+                                        {
+                                            <option value="@patient.PatientId">@patient.FirstName @patient.LastName</option>
+                                        }
+                                    </InputSelect>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Doctor</label>
+                                    <InputSelect class="form-select" @bind-Value="@selectedDoctorId" @onchange="DoctorChanged">
+                                        <option value="">Select Doctor</option>
+                                        @foreach (var doctor in doctors)
+                                        {
+                                            <option value="@doctor.DoctorId">Dr. @doctor.LastName (@doctor.Specialty)</option>
+                                        }
+                                    </InputSelect>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Date</label>
+                                    <InputDate class="form-control" @bind-Value="@selectedDate" @onchange="DateChanged" />
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Time</label>
+                                    <InputSelect class="form-select" @bind-Value="@selectedTime" disabled="@(availableTimeSlots.Count == 0)">
+                                        <option value="">Select Time</option>
+                                        @foreach (var time in availableTimeSlots)
+                                        {
+                                            <option value="@time">@time.ToString(@"hh\:mm")</option>
+                                        }
+                                    </InputSelect>
+                                    @if (availableTimeSlots.Count == 0 && selectedDoctorId > 0 && selectedDate != default)
+                                    {
+                                        <small class="text-danger">No available slots for selected date</small>
+                                    }
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Reason</label>
+                                <InputText class="form-control" @bind-Value="@currentAppointment.Reason" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Notes</label>
+                                <InputTextArea class="form-control" @bind-Value="@currentAppointment.Notes" />
+                            </div>
+                            @if (currentAppointment.AppointmentId > 0)
+                            {
+                                <div class="mb-3">
+                                    <label class="form-label">Status</label>
+                                    <InputSelect class="form-select" @bind-Value="@currentAppointment.AppointmentStatus">
+                                        @foreach (AppointmentStatus status in Enum.GetValues(typeof(AppointmentStatus)))
+                                        {
+                                            <option value="@status">@status</option>
+                                        }
+                                    </InputSelect>
+                                </div>
+                            }
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                                <button type="submit" class="btn btn-primary">Save</button>
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Delete Confirmation Modal -->
+    @if (showDeleteModal)
+    {
+        <div class="modal-backdrop show"></div>
+        <div class="modal show d-block" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Confirm Cancellation</h5>
+                        <button type="button" class="btn-close" @onclick="CloseDeleteModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Are you sure you want to cancel this appointment?</p>
+                        <p>
+                            <strong>Patient:</strong> @(currentAppointment.Patient?.FirstName ?? "N/A") @(currentAppointment.Patient?.LastName ?? "")<br>
+                            <strong>Doctor:</strong> Dr. @(currentAppointment.Doctor?.LastName ?? "N/A")<br>
+                            <strong>When:</strong> @currentAppointment.Date.ToString("f")
+                        </p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseDeleteModal">No, Keep</button>
+                        <button type="button" class="btn btn-danger" @onclick="ConfirmDelete">Yes, Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<Appointment> allAppointments = new List<Appointment>();
+    private List<Appointment> filteredAppointments = new List<Appointment>();
+    private List<Patient> patients = new List<Patient>();
+    private List<Doctor> doctors = new List<Doctor>();
+    private Appointment currentAppointment = new Appointment();
+    private List<TimeSpan> availableTimeSlots = new List<TimeSpan>();
+    private int selectedPatientId;
+    private int selectedDoctorId;
+    private DateTime selectedDate = DateTime.Today;
+    private TimeSpan selectedTime;
+
+    private string _searchTerm = string.Empty;
+    private string searchTerm
+    {
+        get => _searchTerm;
+        set
+        {
+            if (_searchTerm != value)
+            {
+                _searchTerm = value;
+                FilterAppointments();
+            }
+        }
+    }
+
+    private DateTime _filterDate = DateTime.Today;
+    private DateTime filterDate
+    {
+        get => _filterDate;
+        set
+        {
+            if (_filterDate != value)
+            {
+                _filterDate = value;
+                FilterAppointments();
+            }
+        }
+    }
+
+    private bool isLoading = true;
+    private bool showEditModal = false;
+    private bool showDeleteModal = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error initializing component: {ex.Message}");
+            // Initialize empty lists to prevent null reference exceptions
+            allAppointments = new List<Appointment>();
+            patients = new List<Patient>();
+            doctors = new List<Doctor>();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadData()
+    {
+        var appointmentsTask = AppointmentService.GetAllAppointmentsAsync();
+        var patientsTask = PatientService.GetAllPatientsAsync();
+        var doctorsTask = DoctorService.GetAllDoctorsAsync();
+
+        await Task.WhenAll(appointmentsTask, patientsTask, doctorsTask);
+
+        allAppointments = (await appointmentsTask)?.ToList() ?? new List<Appointment>();
+        patients = (await patientsTask)?.ToList() ?? new List<Patient>();
+        doctors = (await doctorsTask)?.ToList() ?? new List<Doctor>();
+
+        FilterAppointments();
+    }
+
+    private void FilterAppointments()
+    {
+        if (allAppointments == null) return;
+
+        filteredAppointments = allAppointments
+            .Where(a => a != null &&
+                       (filterDate == default || a.Date.Date == filterDate.Date) &&
+                       (string.IsNullOrWhiteSpace(searchTerm) ||
+                        (a.Patient?.FirstName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true) ||
+                        (a.Patient?.LastName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true) ||
+                        (a.Doctor?.LastName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true) ||
+                        (a.Doctor?.Specialty?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true) ||
+                        (a.Reason?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true)))
+            .OrderBy(a => a.Date)
+            .ToList();
+
+        StateHasChanged();
+    }
+
+    private async Task DateChanged()
+    {
+        if (selectedDoctorId > 0 && selectedDate != default)
+        {
+            availableTimeSlots = await AppointmentService.GetAvailableTimeSlotsAsync(selectedDoctorId, selectedDate);
+        }
+    }
+
+    private async Task DoctorChanged()
+    {
+        if (selectedDoctorId > 0 && selectedDate != default)
+        {
+            availableTimeSlots = await AppointmentService.GetAvailableTimeSlotsAsync(selectedDoctorId, selectedDate);
+        }
+    }
+
+    private void ShowCreateModal()
+    {
+        currentAppointment = new Appointment
+        {
+            Date = DateTime.Today.AddHours(9),
+            AppointmentStatus = AppointmentStatus.Pending,
+            Patient = new Patient(),
+            Doctor = new Doctor()
+        };
+        selectedPatientId = 0;
+        selectedDoctorId = 0;
+        selectedDate = DateTime.Today;
+        availableTimeSlots = new List<TimeSpan>();
+        showEditModal = true;
+    }
+
+    private async Task EditAppointment(int id)
+    {
+        try
+        {
+            currentAppointment = await AppointmentService.GetAppointmentByIdAsync(id) ?? new Appointment();
+            selectedPatientId = currentAppointment.Patient?.PatientId ?? 0;
+            selectedDoctorId = currentAppointment.Doctor?.DoctorId ?? 0;
+            selectedDate = currentAppointment.Date.Date;
+            selectedTime = currentAppointment.Date.TimeOfDay;
+            
+            if (selectedDoctorId > 0)
+            {
+                availableTimeSlots = await AppointmentService.GetAvailableTimeSlotsAsync(selectedDoctorId, selectedDate);
+            }
+            
+            showEditModal = true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error editing appointment: {ex.Message}");
+        }
+    }
+
+    private async Task SaveAppointment()
+    {
+        try
+        {
+            currentAppointment.Patient = patients.FirstOrDefault(p => p?.PatientId == selectedPatientId);
+            currentAppointment.Doctor = doctors.FirstOrDefault(d => d?.DoctorId == selectedDoctorId);
+            
+            if (selectedDate != default && selectedTime != default)
+            {
+                currentAppointment.Date = selectedDate.Date.Add(selectedTime);
+            }
+
+            if (currentAppointment.AppointmentId == 0)
+            {
+                await AppointmentService.AddAppointmentAsync(currentAppointment);
+            }
+            else
+            {
+                await AppointmentService.UpdateAppointmentAsync(currentAppointment);
+            }
+
+            showEditModal = false;
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving appointment: {ex.Message}");
+        }
+    }
+
+    private void CloseModal()
+    {
+        showEditModal = false;
+    }
+
+    private async Task DeleteAppointment(int id)
+    {
+        try
+        {
+            currentAppointment = await AppointmentService.GetAppointmentByIdAsync(id) ?? new Appointment();
+            showDeleteModal = true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error preparing to delete appointment: {ex.Message}");
+        }
+    }
+
+    private void ClearFilters()
+    {
+        searchTerm = string.Empty;
+        filterDate = default;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        try
+        {
+            await AppointmentService.DeleteAppointmentAsync(currentAppointment.AppointmentId);
+            showDeleteModal = false;
+            await LoadData();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting appointment: {ex.Message}");
+        }
+    }
+
+    private void CloseDeleteModal()
+    {
+        showDeleteModal = false;
+    }
+
+    private string GetStatusBadgeClass(AppointmentStatus status)
+    {
+        return status switch
+        {
+            AppointmentStatus.Pending => "bg-warning",
+            AppointmentStatus.Completed => "bg-success",
+            AppointmentStatus.Canceled => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+}

@@ -1,0 +1,271 @@
+﻿@page "/patients"
+@using MedicoverClone.Domain
+@using MedicoverClone.Services.Interfaces
+
+@inject IPatientService PatientService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Patient Management</PageTitle>
+
+<div class="patient-management-container">
+    <div class="header-section">
+        <h1>Patient Management</h1>
+        <div class="header-actions">
+            <button class="btn btn-primary" @onclick="AddNewPatient">
+                <i class="fas fa-plus"></i> Add New Patient
+            </button>
+            <div class="search-box">
+                <input type="text" class="form-control" placeholder="Search patients..." 
+                       @bind="searchTerm" @bind:event="oninput" />
+                <i class="fas fa-search"></i>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading-spinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Date of Birth</th>
+                        <th>Gender</th>
+                        <th>Contact</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (patients.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center py-4">
+                                <i class="fas fa-user-slash fa-2x text-muted mb-2"></i>
+                                <p>No patients found</p>
+                                <button class="btn btn-primary" @onclick="AddNewPatient">
+                                    Add your first patient
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var patient in patients)
+                        {
+                            <tr>
+                                <td>@patient.PatientId</td>
+                                <td>
+                                    <a href="#" @onclick="@(() => ViewPatient(patient.PatientId))">
+                                        @patient.LastName, @patient.FirstName
+                                    </a>
+                                </td>
+                                <td>@patient.DateOfBirth.ToString("d")</td>
+                                <td>@patient.Gender</td>
+                                <td>
+                                    <div>@patient.ContactInfo</div>
+                                    <small class="text-muted">@patient.Address</small>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" @onclick="@(() => ViewPatient(patient.PatientId))">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => EditPatient(patient.PatientId))">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="@(() => DeletePatient(patient.PatientId))">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    <!-- Patient Edit Modal -->
+    @if (showEditModal)
+    {
+        <div class="modal-backdrop show"></div>
+        <div class="modal show d-block" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">@(currentPatient.PatientId == 0 ? "Add New Patient" : "Edit Patient")</h5>
+                        <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <EditForm Model="@currentPatient" OnValidSubmit="@SavePatient">
+                            <DataAnnotationsValidator />
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="firstName" class="form-label">First Name</label>
+                                    <InputText id="firstName" class="form-control" @bind-Value="@currentPatient.FirstName" />
+                                    <ValidationMessage For="@(() => currentPatient.FirstName)" />
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="lastName" class="form-label">Last Name</label>
+                                    <InputText id="lastName" class="form-control" @bind-Value="@currentPatient.LastName" />
+                                    <ValidationMessage For="@(() => currentPatient.LastName)" />
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="dob" class="form-label">Date of Birth</label>
+                                    <InputDate id="dob" class="form-control" @bind-Value="@currentPatient.DateOfBirth" />
+                                    <ValidationMessage For="@(() => currentPatient.DateOfBirth)" />
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="gender" class="form-label">Gender</label>
+                                    <InputSelect id="gender" class="form-select" @bind-Value="@currentPatient.Gender">
+                                        <option value="">Select Gender</option>
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                        <option value="Other">Other</option>
+                                    </InputSelect>
+                                    <ValidationMessage For="@(() => currentPatient.Gender)" />
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="contact" class="form-label">Contact Info</label>
+                                <InputText id="contact" class="form-control" @bind-Value="@currentPatient.ContactInfo" />
+                                <ValidationMessage For="@(() => currentPatient.ContactInfo)" />
+                            </div>
+                            <div class="mb-3">
+                                <label for="address" class="form-label">Address</label>
+                                <InputTextArea id="address" class="form-control" @bind-Value="@currentPatient.Address" />
+                                <ValidationMessage For="@(() => currentPatient.Address)" />
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                                <button type="submit" class="btn btn-primary">Save</button>
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Delete Confirmation Modal -->
+    @if (showDeleteModal)
+    {
+        <div class="modal-backdrop show"></div>
+        <div class="modal show d-block" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Confirm Delete</h5>
+                        <button type="button" class="btn-close" @onclick="CloseDeleteModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Are you sure you want to delete patient <strong>@currentPatient.FirstName @currentPatient.LastName</strong>?</p>
+                        <p class="text-danger">This action cannot be undone.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseDeleteModal">Cancel</button>
+                        <button type="button" class="btn btn-danger" @onclick="ConfirmDelete">Delete</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<Patient> patients = new List<Patient>();
+    private Patient currentPatient = new Patient();
+    private bool isLoading = true;
+    private bool showEditModal = false;
+    private bool showDeleteModal = false;
+    private string searchTerm = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPatients();
+        isLoading = false;
+    }
+
+    private async Task LoadPatients()
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            patients = await PatientService.GetAllPatientsAsync();
+        }
+        else
+        {
+            patients = await PatientService.SearchPatientsAsync(searchTerm);
+        }
+    }
+
+    private async Task SearchPatients(ChangeEventArgs e)
+    {
+        searchTerm = e.Value?.ToString() ?? string.Empty;
+        await LoadPatients();
+    }
+
+    private void AddNewPatient()
+    {
+        currentPatient = new Patient();
+        showEditModal = true;
+    }
+
+    private async Task ViewPatient(int id)
+    {
+        NavigationManager.NavigateTo($"/patients/{id}");
+    }
+
+    private async Task EditPatient(int id)
+    {
+        currentPatient = await PatientService.GetPatientByIdAsync(id);
+        showEditModal = true;
+    }
+
+    private async Task SavePatient()
+    {
+        if (currentPatient.PatientId == 0)
+        {
+            await PatientService.AddPatientAsync(currentPatient);
+        }
+        else
+        {
+            await PatientService.UpdatePatientAsync(currentPatient);
+        }
+
+        showEditModal = false;
+        await LoadPatients();
+    }
+
+    private void CloseModal()
+    {
+        showEditModal = false;
+    }
+
+    private async Task DeletePatient(int id)
+    {
+        currentPatient = await PatientService.GetPatientByIdAsync(id);
+        showDeleteModal = true;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        await PatientService.DeletePatientAsync(currentPatient.PatientId);
+        showDeleteModal = false;
+        await LoadPatients();
+    }
+
+    private void CloseDeleteModal()
+    {
+        showDeleteModal = false;
+    }
+}

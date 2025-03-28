@@ -70,6 +70,24 @@ using MedicoverClone
 #line 10 "C:\Users\dgtla\source\repos\MedicoverClone\MedicoverClone\_Imports.razor"
 using MedicoverClone.Shared
 
+#nullable disable
+    ;
+#nullable restore
+#line 2 "C:\Users\dgtla\source\repos\MedicoverClone\MedicoverClone\Pages\Index.razor"
+ using MedicoverClone.Domain
+
+#nullable disable
+    ;
+#nullable restore
+#line 3 "C:\Users\dgtla\source\repos\MedicoverClone\MedicoverClone\Pages\Index.razor"
+ using MedicoverClone.Services.Interfaces
+
+#nullable disable
+    ;
+#nullable restore
+#line 4 "C:\Users\dgtla\source\repos\MedicoverClone\MedicoverClone\Pages\Index.razor"
+ using MedicoverClone.ViewModels
+
 #line default
 #line hidden
 #nullable disable
@@ -93,6 +111,61 @@ using MedicoverClone.Shared
         {
         }
         #pragma warning restore 1998
+#nullable restore
+#line 225 "C:\Users\dgtla\source\repos\MedicoverClone\MedicoverClone\Pages\Index.razor"
+       
+    private HomePageViewModel Model = new HomePageViewModel();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            Model = await DataAggregator.GetHomePageDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading dashboard data: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private string GetStatusBadgeClass(AppointmentStatus status)
+    {
+        return status switch
+        {
+            AppointmentStatus.Pending => "bg-warning",
+            AppointmentStatus.Completed => "bg-success",
+            AppointmentStatus.Canceled => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
+
+#line default
+#line hidden
+#nullable disable
+
+        [global::Microsoft.AspNetCore.Components.InjectAttribute] private 
+#nullable restore
+#line 5 "C:\Users\dgtla\source\repos\MedicoverClone\MedicoverClone\Pages\Index.razor"
+        IHomePageDataAggregator
+
+#line default
+#line hidden
+#nullable disable
+         
+#nullable restore
+#line 5 "C:\Users\dgtla\source\repos\MedicoverClone\MedicoverClone\Pages\Index.razor"
+                                DataAggregator
+
+#line default
+#line hidden
+#nullable disable
+         { get; set; }
+         = default!;
     }
 }
 #pragma warning restore 1591

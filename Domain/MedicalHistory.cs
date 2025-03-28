@@ -9,6 +9,7 @@ namespace MedicoverClone.Domain
         public string Diagnosis { get; set; }
         public string Treatment { get; set; }
         public Patient Patient { get; set; }
+        public string Notes { get; set; }
     }
 
 }

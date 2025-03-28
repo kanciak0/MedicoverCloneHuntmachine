@@ -1,0 +1,258 @@
+﻿@page "/doctors"
+@using MedicoverClone.Domain
+@using MedicoverClone.Services.Interfaces
+@inject IDoctorService DoctorService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Doctor Management</PageTitle>
+
+<div class="doctor-management-container">
+    <div class="header-section">
+        <h1>Doctor Management</h1>
+        <div class="header-actions">    
+            <button class="btn btn-primary" @onclick="AddNewDoctor">
+                <i class="fas fa-plus"></i> Add New Doctor
+            </button>
+            <div class="search-box">
+                <input type="text" class="form-control" placeholder="Search doctors..." 
+                       @bind="searchTerm" @bind:event="oninput" />
+                <i class="fas fa-search"></i>
+            </div>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div class="loading-spinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Specialty</th>
+                        <th>Contact</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (doctors.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center py-4">
+                                <i class="fas fa-user-md fa-2x text-muted mb-2"></i>
+                                <p>No doctors found</p>
+                                <button class="btn btn-primary" @onclick="AddNewDoctor">
+                                    Add your first doctor
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var doctor in doctors)
+                        {
+                            <tr>
+                                <td>@doctor.DoctorId</td>
+                                <td>
+                                    <a href="#" @onclick="@(() => ViewDoctor(doctor.DoctorId))">
+                                        Dr. @doctor.LastName, @doctor.FirstName
+                                    </a>
+                                </td>
+                                <td>@doctor.Specialty</td>
+                                <td>@doctor.ContactInfo</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" @onclick="@(() => ViewDoctor(doctor.DoctorId))">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="@(() => EditDoctor(doctor.DoctorId))">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="@(() => DeleteDoctor(doctor.DoctorId))">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    <!-- Doctor Edit Modal -->
+    @if (showEditModal)
+    {
+        <div class="modal-backdrop show"></div>
+        <div class="modal show d-block" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">@(currentDoctor.DoctorId == 0 ? "Add New Doctor" : "Edit Doctor")</h5>
+                        <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <EditForm Model="@currentDoctor" OnValidSubmit="@SaveDoctor">
+                            <DataAnnotationsValidator />
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="firstName" class="form-label">First Name</label>
+                                    <InputText id="firstName" class="form-control" @bind-Value="@currentDoctor.FirstName" />
+                                    <ValidationMessage For="@(() => currentDoctor.FirstName)" />
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="lastName" class="form-label">Last Name</label>
+                                    <InputText id="lastName" class="form-control" @bind-Value="@currentDoctor.LastName" />
+                                    <ValidationMessage For="@(() => currentDoctor.LastName)" />
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="specialty" class="form-label">Specialty</label>
+                                    <InputSelect id="specialty" class="form-select" @bind-Value="@currentDoctor.Specialty">
+                                        <option value="">Select Specialty</option>
+                                        @foreach (var specialty in specialties)
+                                        {
+                                            <option value="@specialty">@specialty</option>
+                                        }
+                                    </InputSelect>
+                                    <ValidationMessage For="@(() => currentDoctor.Specialty)" />
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="contact" class="form-label">Contact Info</label>
+                                    <InputText id="contact" class="form-control" @bind-Value="@currentDoctor.ContactInfo" />
+                                    <ValidationMessage For="@(() => currentDoctor.ContactInfo)" />
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                                <button type="submit" class="btn btn-primary">Save</button>
+                            </div>
+                        </EditForm>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Delete Confirmation Modal -->
+    @if (showDeleteModal)
+    {
+        <div class="modal-backdrop show"></div>
+        <div class="modal show d-block" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Confirm Delete</h5>
+                        <button type="button" class="btn-close" @onclick="CloseDeleteModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Are you sure you want to delete Dr. <strong>@currentDoctor.FirstName @currentDoctor.LastName</strong>?</p>
+                        <p class="text-danger">This action cannot be undone and will affect any associated appointments.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseDeleteModal">Cancel</button>
+                        <button type="button" class="btn btn-danger" @onclick="ConfirmDelete">Delete</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private List<Doctor> doctors = new List<Doctor>();
+    private List<string> specialties = new List<string>();
+    private Doctor currentDoctor = new Doctor();
+    private bool isLoading = true;
+    private bool showEditModal = false;
+    private bool showDeleteModal = false;
+    private string searchTerm = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDoctors();
+        specialties = await DoctorService.GetAllSpecialtiesAsync();
+        isLoading = false;
+    }
+
+    private async Task LoadDoctors()
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            doctors = await DoctorService.GetAllDoctorsAsync();
+        }
+        else
+        {
+            doctors = await DoctorService.SearchDoctorsAsync(searchTerm);
+        }
+    }
+
+    private async Task SearchDoctors(ChangeEventArgs e)
+    {
+        searchTerm = e.Value?.ToString() ?? string.Empty;
+        await LoadDoctors();
+    }
+
+    private void AddNewDoctor()
+    {
+        currentDoctor = new Doctor();
+        showEditModal = true;
+    }
+
+    private async Task ViewDoctor(int id)
+    {
+        NavigationManager.NavigateTo($"/doctors/{id}");
+    }
+
+    private async Task EditDoctor(int id)
+    {
+        currentDoctor = await DoctorService.GetDoctorByIdAsync(id);
+        showEditModal = true;
+    }
+
+    private async Task SaveDoctor()
+    {
+        if (currentDoctor.DoctorId == 0)
+        {
+            await DoctorService.AddDoctorAsync(currentDoctor);
+        }
+        else
+        {
+            await DoctorService.UpdateDoctorAsync(currentDoctor);
+        }
+
+        showEditModal = false;
+        await LoadDoctors();
+    }
+
+    private void CloseModal()
+    {
+        showEditModal = false;
+    }
+
+    private async Task DeleteDoctor(int id)
+    {
+        currentDoctor = await DoctorService.GetDoctorByIdAsync(id);
+        showDeleteModal = true;
+    }
+
+    private async Task ConfirmDelete()
+    {
+        await DoctorService.DeleteDoctorAsync(currentDoctor.DoctorId);
+        showDeleteModal = false;
+        await LoadDoctors();
+    }
+
+    private void CloseDeleteModal()
+    {
+        showDeleteModal = false;
+    }
+}

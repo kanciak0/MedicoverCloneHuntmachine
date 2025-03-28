@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MedicoverClone")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7d8e68537670ac51571b145dfc4377a5a0978a69")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1247ebf201e63f45e75bdc24be3b6e467d692c29")]
 [assembly: System.Reflection.AssemblyProductAttribute("MedicoverClone")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MedicoverClone")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

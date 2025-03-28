@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using MedicoverClone.Data;
+using MedicoverClone.Services;
+using MedicoverClone.Services.Interfaces;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Hosting;
@@ -29,6 +31,11 @@ namespace MedicoverClone
             services.AddRazorPages();
             services.AddServerSideBlazor();
             services.AddSingleton<WeatherForecastService>();
+            services.AddScoped<IHomePageDataAggregator, HomePageDataAggregator>();
+            services.AddScoped<IAppointmentService, AppointmentService>();
+            services.AddScoped<IMedicalHistoryService, MedicalHistoryService>();
+            services.AddScoped<IPatientService, PatientService>();
+            services.AddScoped<IDoctorService, DoctorService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
